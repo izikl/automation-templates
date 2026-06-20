@@ -1,0 +1,97 @@
+{
+  "name": "Invoice Processing Automation",
+  "description": "Watch a Gmail inbox for emails with PDF attachments, parse the invoice data using a PDF parser module, append a row to a Google Sheet, then send a Slack notification to your accounting channel.",
+  "platform": "Make (Integromat)",
+  "version": "1.0.0",
+  "tags": [
+    "invoice",
+    "gmail",
+    "google-sheets",
+    "slack",
+    "finance"
+  ],
+  "estimatedTimeSaved": "30 min/week",
+  "modules": [
+    {
+      "id": 1,
+      "type": "trigger",
+      "app": "Gmail",
+      "module": "Watch Emails",
+      "config": {
+        "label": "INBOX",
+        "markAsRead": true,
+        "maxResults": 5,
+        "filter": "has:attachment filename:*.pdf subject:(invoice OR receipt OR bill)"
+      },
+      "notes": "Replace with your own Gmail credentials and label."
+    },
+    {
+      "id": 2,
+      "type": "action",
+      "app": "Gmail",
+      "module": "Get an Attachment",
+      "config": {
+        "messageId": "{{1.id}}",
+        "attachmentId": "{{1.attachments[].id}}"
+      }
+    },
+    {
+      "id": 3,
+      "type": "action",
+      "app": "PDF.co (or Parseur)",
+      "module": "Extract PDF Data",
+      "config": {
+        "fileUrl": "{{2.url}}",
+        "template": "invoice",
+        "fields": [
+          "invoiceNumber",
+          "date",
+          "totalAmount",
+          "vendor",
+          "dueDate"
+        ]
+      },
+      "notes": "Uses a free PDF parser. You can substitute with Adobe PDF Services or Parseur."
+    },
+    {
+      "id": 4,
+      "type": "action",
+      "app": "Google Sheets",
+      "module": "Add a Row",
+      "config": {
+        "spreadsheetId": "YOUR_SPREADSHEET_ID",
+        "sheetName": "Invoices",
+        "values": {
+          "A": "{{3.invoiceNumber}}",
+          "B": "{{3.date}}",
+          "C": "{{3.vendor}}",
+          "D": "{{3.totalAmount}}",
+          "E": "{{3.dueDate}}",
+          "F": "{{1.subject}}",
+          "G": "pending"
+        }
+      },
+      "notes": "Replace YOUR_SPREADSHEET_ID with your Google Sheet ID from the URL."
+    },
+    {
+      "id": 5,
+      "type": "action",
+      "app": "Slack",
+      "module": "Create a Message",
+      "config": {
+        "channel": "#accounting",
+        "text": ":receipt: New invoice from *{{3.vendor}}* — Amount: *${{3.totalAmount}}* — Due: {{3.dueDate}}. <https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID|View in Sheets>"
+      },
+      "notes": "Optional: replace with email notification if you do not use Slack."
+    }
+  ],
+  "setupSteps": [
+    "1. Import this JSON into Make (go to Scenarios → Import Blueprint).",
+    "2. Connect your Gmail account in the Gmail module.",
+    "3. Create a Google Sheet with columns: Invoice #, Date, Vendor, Amount, Due Date, Subject, Status.",
+    "4. Connect your Google Sheets and replace YOUR_SPREADSHEET_ID.",
+    "5. Connect your Slack workspace and set the correct channel.",
+    "6. Activate the scenario and set a schedule (e.g. every 15 minutes)."
+  ],
+  "license": "MIT — use freely for personal or commercial projects."
+}
