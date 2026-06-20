@@ -1,0 +1,137 @@
+{
+  "name": "Weekly Report Generation & Email",
+  "description": "Every Monday morning, pull data from a Google Sheet, generate a summary, and email a formatted weekly report to stakeholders.",
+  "platform": "n8n",
+  "version": "1.0.0",
+  "tags": [
+    "reporting",
+    "google-sheets",
+    "email",
+    "scheduled",
+    "business-intelligence"
+  ],
+  "estimatedTimeSaved": "1 hr/week",
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Every Monday 8am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "read-sheets",
+      "name": "Read KPI Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "value": "YOUR_KPI_SPREADSHEET_ID"
+        },
+        "sheetName": {
+          "value": "Weekly KPIs"
+        },
+        "options": {
+          "headerRow": 1
+        }
+      },
+      "notes": "Replace YOUR_KPI_SPREADSHEET_ID with your sheet ID."
+    },
+    {
+      "id": "code-summarise",
+      "name": "Summarise KPIs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(r => r.json);\nconst week = new Date().toLocaleDateString('en-GB');\nlet totalRevenue = 0, totalLeads = 0;\nrows.forEach(r => {\n  totalRevenue += parseFloat(r['Revenue'] || 0);\n  totalLeads   += parseInt(r['Leads'] || 0, 10);\n});\nconst avgRevenue = rows.length ? (totalRevenue / rows.length).toFixed(2) : 0;\nreturn [{\n  json: {\n    week,\n    totalRevenue: totalRevenue.toFixed(2),\n    totalLeads,\n    avgDailyRevenue: avgRevenue,\n    rowCount: rows.length,\n    rows,\n  }\n}];"
+      }
+    },
+    {
+      "id": "send-email",
+      "name": "Email Report",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "operation": "send",
+        "sendTo": "YOUR_EMAIL@example.com",
+        "subject": "Weekly KPI Report — week of {{$json[\"week\"]}}",
+        "emailType": "html",
+        "message": "<h2>Weekly KPI Report — {{$json[\"week\"]}}</h2>\n<table border=\"1\" cellpadding=\"6\" cellspacing=\"0\">\n  <tr><th>Metric</th><th>Value</th></tr>\n  <tr><td>Total Revenue</td><td>{{$json[\"totalRevenue\"]}}</td></tr>\n  <tr><td>Total Leads</td><td>{{$json[\"totalLeads\"]}}</td></tr>\n  <tr><td>Avg Daily Revenue</td><td>{{$json[\"avgDailyRevenue\"]}}</td></tr>\n</table>\n<p>Generated automatically by n8n.</p>"
+      },
+      "notes": "Replace YOUR_EMAIL with the recipients. Requires Gmail OAuth2 credentials."
+    }
+  ],
+  "connections": {
+    "schedule": {
+      "main": [
+        [
+          {
+            "node": "read-sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "read-sheets": {
+      "main": [
+        [
+          {
+            "node": "code-summarise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "code-summarise": {
+      "main": [
+        [
+          {
+            "node": "send-email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "setupSteps": [
+    "1. Import this JSON into n8n (Workflows → Import from File).",
+    "2. Create a Google Sheet named \"Weekly KPIs\" with columns: Date, Revenue, Leads.",
+    "3. Replace YOUR_KPI_SPREADSHEET_ID and YOUR_EMAIL.",
+    "4. Set up Gmail OAuth2 and Google Sheets credentials in n8n.",
+    "5. Activate the workflow."
+  ],
+  "license": "MIT — use freely for personal or commercial projects."
+}
