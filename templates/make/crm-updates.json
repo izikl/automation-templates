@@ -1,0 +1,63 @@
+{
+  "name": "CRM Lead Update from Form Submissions",
+  "description": "Watch for new Typeform/Google Form submissions, create or update a contact in HubSpot (free CRM), and send a personalised follow-up email via Gmail.",
+  "platform": "Make (Integromat)",
+  "version": "1.0.0",
+  "tags": [
+    "crm",
+    "hubspot",
+    "typeform",
+    "gmail",
+    "leads"
+  ],
+  "estimatedTimeSaved": "2 hr/week",
+  "modules": [
+    {
+      "id": 1,
+      "type": "trigger",
+      "app": "Typeform",
+      "module": "Watch Responses",
+      "config": {
+        "formId": "YOUR_FORM_ID"
+      },
+      "notes": "Replace YOUR_FORM_ID. Also works with Google Forms via the Webhooks module."
+    },
+    {
+      "id": 2,
+      "type": "action",
+      "app": "HubSpot",
+      "module": "Create/Update a Contact",
+      "config": {
+        "email": "{{1.answers.email}}",
+        "firstName": "{{1.answers.first_name}}",
+        "lastName": "{{1.answers.last_name}}",
+        "company": "{{1.answers.company}}",
+        "phone": "{{1.answers.phone}}",
+        "lifecycleStage": "lead",
+        "source": "typeform"
+      },
+      "notes": "HubSpot CRM is free. Connect via the HubSpot app in Make."
+    },
+    {
+      "id": 3,
+      "type": "action",
+      "app": "Gmail",
+      "module": "Send an Email",
+      "config": {
+        "to": "{{1.answers.email}}",
+        "subject": "Thanks for reaching out, {{1.answers.first_name}}!",
+        "bodyType": "html",
+        "body": "<p>Hi {{1.answers.first_name}},</p><p>Thanks for your interest! A member of our team will be in touch within 1 business day.</p><p>In the meantime, feel free to browse our resources at [YOUR_WEBSITE].</p><p>Best,<br>[YOUR_NAME]</p>"
+      }
+    }
+  ],
+  "setupSteps": [
+    "1. Import this JSON into Make (Scenarios → Import Blueprint).",
+    "2. Connect your Typeform account and select your form.",
+    "3. Connect your HubSpot free account.",
+    "4. Connect your Gmail account.",
+    "5. Customise the follow-up email body with your name and website.",
+    "6. Activate the scenario."
+  ],
+  "license": "MIT — use freely for personal or commercial projects."
+}
