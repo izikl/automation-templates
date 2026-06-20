@@ -1,0 +1,165 @@
+{
+  "name": "Invoice Processing Automation",
+  "description": "Watch Gmail for invoice attachments → parse PDF → append to Google Sheets → notify via Slack.",
+  "platform": "n8n",
+  "version": "1.0.0",
+  "tags": [
+    "invoice",
+    "gmail",
+    "google-sheets",
+    "slack",
+    "finance"
+  ],
+  "estimatedTimeSaved": "30 min/week",
+  "nodes": [
+    {
+      "id": "gmail-trigger",
+      "name": "Watch Gmail for invoices",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute",
+              "value": 15
+            }
+          ]
+        },
+        "filters": {
+          "subject": "invoice",
+          "hasAttachment": true
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "notes": "Set up Gmail OAuth2 credentials in n8n settings."
+    },
+    {
+      "id": "pdf-parser",
+      "name": "Extract invoice data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdf.co/v1/pdf/convert/to/json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{$json[\"attachments\"][0][\"url\"]}}"
+            },
+            {
+              "name": "pages",
+              "value": "1-"
+            }
+          ]
+        }
+      },
+      "notes": "Free PDF.co API key provides 100 operations/month. Swap with any PDF extractor."
+    },
+    {
+      "id": "sheets-append",
+      "name": "Append to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "value": "YOUR_SPREADSHEET_ID"
+        },
+        "sheetName": {
+          "value": "Invoices"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice #": "={{$json[\"invoiceNumber\"]}}",
+            "Date": "={{$json[\"date\"]}}",
+            "Vendor": "={{$json[\"vendor\"]}}",
+            "Amount": "={{$json[\"totalAmount\"]}}",
+            "Status": "pending"
+          }
+        }
+      },
+      "notes": "Create a Google Sheet with the same column headers. Replace YOUR_SPREADSHEET_ID."
+    },
+    {
+      "id": "slack-notify",
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": {
+          "value": "#accounting"
+        },
+        "text": ":receipt: New invoice — *{{$json[\"vendor\"]}}* | ${{$json[\"totalAmount\"]}} | Due: {{$json[\"dueDate\"]}}"
+      }
+    }
+  ],
+  "connections": {
+    "gmail-trigger": {
+      "main": [
+        [
+          {
+            "node": "pdf-parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pdf-parser": {
+      "main": [
+        [
+          {
+            "node": "sheets-append",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sheets-append": {
+      "main": [
+        [
+          {
+            "node": "slack-notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "setupSteps": [
+    "1. Import this JSON into n8n (Workflows → Import from File).",
+    "2. Set up Google OAuth2 credentials and Gmail credentials in n8n.",
+    "3. Set up Slack credentials.",
+    "4. Replace YOUR_SPREADSHEET_ID with your Google Sheet ID.",
+    "5. Activate the workflow."
+  ],
+  "license": "MIT — use freely for personal or commercial projects."
+}
